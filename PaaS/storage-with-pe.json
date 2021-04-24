@@ -1,0 +1,69 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "spokes": {
+            "type": "array",
+            "metadata": {
+                "description": "Subnets object with all the properties required for a subnet"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "name": "[replace(concat(parameters('deploymentPrefix'),uniqueString(deployment().name) , 'sa'), '-', '')]",
+            "type": "Microsoft.Storage/storageAccounts",
+            "apiVersion": "2019-06-01",
+            "sku": {
+                "name": "Standard_LRS",
+                "tier": "Standard"
+            },
+            "kind": "StorageV2",
+            "location": "westeurope",
+            "properties": {
+                "accessTier": "Hot",
+                "supportsHttpsTrafficOnly": true
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateEndpoints",
+            "apiVersion": "2020-06-01",
+            "name": "[concat(parameters('deploymentPrefix'), '-', uniqueString(deployment().name) , '-sa-', parameters('spokes')[copyIndex()].name, '-private-endpoint')]",
+            "location": "[parameters('spokes')[copyIndex()].location]",
+            "dependsOn": [
+                "[replace(concat(parameters('deploymentPrefix'),uniqueString(deployment().name) , 'sa'), '-', '')]"
+            ],
+            "copy": {
+                "count": "[length(parameters('spokes'))]",
+                "name": "private-endpoint-loop"
+            },
+            "properties": {
+                "subnet": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('deploymentPrefix'), '-', parameters('spokes')[copyIndex()].name, '-vnet'), parameters('spokes')[copyIndex()].subnets[1].name)]"
+                },
+                "privateLinkServiceConnections": [
+                    {
+                        "name": "[concat(parameters('deploymentPrefix'), '-', uniqueString( deployment().name) , '-sa-', parameters('spokes')[copyIndex()].name, '-', '-private-endpoint')]",
+                        "properties": {
+                            "privateLinkServiceId": "[resourceId('Microsoft.Storage/storageAccounts',replace(concat(parameters('deploymentPrefix'),uniqueString(deployment().name) , 'sa'), '-', ''))]",
+                            "groupIds": [
+                                "blob"
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {}
+}

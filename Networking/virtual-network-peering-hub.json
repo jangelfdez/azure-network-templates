@@ -1,0 +1,50 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "spokeSubnet": {
+            "type": "object",
+            "metadata": {
+                "description": "Environment object with all the properties required to create a new hub"
+            }
+        },
+        "hubSubnet": {
+            "type": "object",
+            "metadata": {
+                "description": "Environment object with all the properties required to create a new hub"
+            }
+        }
+
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('hubSubnet').name, '-vnet', '/', parameters('deploymentPrefix'), '-', parameters('deploymentPrefix'), '-', parameters('hubSubnet').name, '-vnet', '-to-', parameters('spokeSubnet').name, '-peering')]",
+            "type": "Microsoft.Network/virtualNetworks/virtualNetworkPeerings",
+            "apiVersion": "2020-11-01",
+            "properties": {
+                "allowVirtualNetworkAccess": true,
+                "allowForwardedTraffic": false,
+                "allowGatewayTransit": true,
+                "remoteVirtualNetwork": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworks', concat(parameters('deploymentPrefix'), '-', parameters('spokeSubnet').name, '-vnet'))]"
+                },
+                "remoteAddressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('spokeSubnet').ipAddressPrefix]"
+                    ]
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}

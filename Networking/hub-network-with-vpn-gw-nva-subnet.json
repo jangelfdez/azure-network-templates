@@ -1,0 +1,86 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "environment": {
+            "type": "object",
+            "metadata": {
+                "description": "Environment object with all the properties required to create a new hub"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {
+
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('environment').name, '-vnet')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2019-11-01",
+            "location": "[parameters('environment').location]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('environment').ipAddressPrefix]"
+                    ]
+                },
+                "subnets": "[parameters('environment').subnets]"
+            }
+        },
+        {
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('environment').name, '-vpn-gw-pip')]",
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2019-11-01",
+            "location": "[parameters('environment').location]",
+            "properties": {
+                "publicIPAllocationMethod": "Dynamic"
+            }
+        },
+        {
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('environment').name, '-vpn-gw')]",
+            "type": "Microsoft.Network/virtualNetworkGateways",
+            "apiVersion": "2019-11-01",
+            "location": "[parameters('environment').location]",
+            "dependsOn": [
+                "[resourceId('Microsoft.Network/publicIPAddresses', concat(parameters('deploymentPrefix'),'-', parameters('environment').name,'-vpn-gw-pip'))]",
+                "[resourceId('Microsoft.Network/virtualNetworks', concat(parameters('deploymentPrefix'),'-', parameters('environment').name, '-vnet'))]"
+            ],
+            "properties": {
+                "ipConfigurations": [
+                    {
+                        "name": "[concat(parameters('deploymentPrefix'), parameters('environment').name, '-vpn-gw-pip-config')]",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('deploymentPrefix'), '-',parameters('environment').name, '-vnet'), parameters('environment').subnets[1].name)]"
+                            },
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', concat(parameters('deploymentPrefix'), '-',parameters('environment').name, '-vpn-gw-pip'))]"
+                            }
+                        }
+                    }
+                ],
+                "sku": {
+                    "name": "VpnGw1",
+                    "tier": "VpnGw1"
+                },
+                "gatewayType": "Vpn",
+                "vpnType": "RouteBased",
+                "enableBgp": true,
+                "bgpSettings": {
+                    "asn": "[parameters('environment').asnNumber]"
+                }
+            }
+        }
+    ],
+    "outputs": {}
+}

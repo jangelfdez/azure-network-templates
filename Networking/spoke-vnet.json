@@ -1,0 +1,37 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "spoke": {
+            "type": "object",
+            "metadata": {
+                "description": "Spoke object with all the properties required to create a new spoke"
+            }
+        }
+    },
+    "resources": [
+        {
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('spoke').name, '-vnet')]",
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2019-11-01",
+            "location": "[parameters('spoke').location]",
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('spoke').ipAddressPrefix]"
+                    ]
+                },
+                "subnets": "[parameters('spoke').subnets]"
+            }
+        }
+    ],
+    "outputs": {}
+}

@@ -1,0 +1,48 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "localEnvironment": {
+            "type": "object",
+            "metadata": {
+                "description": "Environment object with all the properties required to create a new hub"
+            }
+        },
+        "remoteEnvironment": {
+            "type": "object",
+            "metadata": {
+                "description": "Environment object with all the properties required to create a new hub"
+            }
+        }
+
+    },
+
+    "resources": [
+        {
+            "type": "Microsoft.Network/connections",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('localEnvironment').name, '-to-', parameters('remoteEnvironment').name, '-vpn-connection')]",
+            "location": "[parameters('localEnvironment').location]",
+            "properties": {
+                "virtualNetworkGateway1": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', concat(parameters('deploymentPrefix'), '-', parameters('localEnvironment').name, '-vpn-gw'))]"
+                },
+                "virtualNetworkGateway2": {
+                    "id": "[resourceId('Microsoft.Network/virtualNetworkGateways', concat(parameters('deploymentPrefix'), '-',parameters('remoteEnvironment').name, '-vpn-gw'))]"
+                },
+                "connectionType": "Vnet2Vnet",
+                "connectionProtocol": "IKEv2",
+                "sharedKey": "Passw0rd!Pasw0rd!",
+                "enableBgp": true
+            }
+        }
+    ]
+}

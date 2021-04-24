@@ -1,0 +1,14 @@
+azure-demo-private-key.pem
+Old/euap-hub-vpn-deployment-parameters.json
+Old/euap-spoke-1-three-subnets.parameters.json
+Old/euap-spoke-2-three-subnets.parameters.json
+Old/hub-network-deployment.json
+Old/hub-vpn-connection.json
+Old/parameters.json
+Old/private-endpoint-for-private-link-service.json
+Old/spoke-three-subnets.json
+Old/storage-account-1-private-endpoint.parameters.json
+Old/storage-account-private-endpoint.json
+Old/template.json
+Old/we-hub-vpn-deployment-parameters.json
+Old/we-spoke-1-three-subnets.parameters.json

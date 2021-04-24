@@ -1,0 +1,315 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "privateLinkEnvironment": {
+            "type": "object",
+            "metadata": {
+                "description": "A Private Link environment object"
+            }
+        }
+
+    },
+    "variables": {},
+    "resources": [
+        {
+            "type": "Microsoft.Network/networkSecurityGroups",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-nsg')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "properties": {
+                "securityRules": [
+                    {
+                        "name": "Allow-Internet-to-22",
+                        "properties": {
+                            "protocol": "TCP",
+                            "sourcePortRange": "*",
+                            "destinationPortRange": "22",
+                            "sourceAddressPrefix": "*",
+                            "destinationAddressPrefix": "*",
+                            "access": "Allow",
+                            "priority": 100,
+                            "direction": "Inbound",
+                            "sourcePortRanges": [],
+                            "destinationPortRanges": [],
+                            "sourceAddressPrefixes": [],
+                            "destinationAddressPrefixes": []
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/publicIPAddresses",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-pip')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+            "zones": [
+                "1"
+            ],
+            "properties": {
+                "publicIPAllocationMethod": "Static"
+            }
+        },
+
+        {
+            "type": "Microsoft.Network/virtualNetworks",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vnet')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-nsg')]"
+            ],
+            "properties": {
+                "addressSpace": {
+                    "addressPrefixes": [
+                        "[parameters('privateLinkEnvironment').ipAddressPrefix]"
+                    ]
+                },
+                "subnets": "[parameters('privateLinkEnvironment').subnets]"
+            }
+        },
+
+        {
+            "type": "Microsoft.Network/networkInterfaces",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-nic')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vnet')]",
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-pip')]",
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb')]"
+            ],
+            "properties": {
+                "networkSecurityGroup": {
+                    "id": "[resourceId('Microsoft.Network/networkSecurityGroups', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-nsg'))]"
+                },
+                "ipConfigurations": [
+                    {
+                        "name": "ipconfig1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "publicIPAddress": {
+                                "id": "[resourceId('Microsoft.Network/publicIPAddresses', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-pip'))]"
+                            },
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vnet'), parameters('privateLinkEnvironment').subnets[0].name)]"
+                            },
+                            "primary": true,
+                            "privateIPAddressVersion": "IPv4",
+                            "loadBalancerBackendAddressPools": [
+                                {
+                                    "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb'),concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name,'-lb-backend-pool'))]"
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        },
+
+
+        {
+            "type": "Microsoft.Compute/virtualMachines",
+            "apiVersion": "2020-12-01",
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vm')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-nic')]"
+            ],
+            "zones": [
+                "1"
+            ],
+            "properties": {
+                "hardwareProfile": {
+                    "vmSize": "Standard_A1_v2"
+                },
+                "storageProfile": {
+                    "imageReference": {
+                        "publisher": "canonical",
+                        "offer": "0001-com-ubuntu-server-focal",
+                        "sku": "20_04-lts",
+                        "version": "latest"
+                    },
+                    "osDisk": {
+                        "osType": "Linux",
+                        "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vm', '-os-disk')]",
+                        "createOption": "FromImage",
+                        "caching": "ReadWrite",
+                        "managedDisk": {
+                            "storageAccountType": "Standard_LRS"
+                        }
+                    },
+                    "dataDisks": []
+                },
+                "osProfile": {
+                    "computerName": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vm')]",
+                    "adminUsername": "[parameters('privateLinkEnvironment').adminUsername]",
+                    "linuxConfiguration": {
+                        "disablePasswordAuthentication": true,
+                        "ssh": {
+                            "publicKeys": [
+                                {
+                                    "path": "[concat('/home/',parameters('privateLinkEnvironment').adminUsername,'/.ssh/authorized_keys')]",
+                                    "keyData": "[parameters('privateLinkEnvironment').publicKey]"
+                                }
+                            ]
+                        }
+                    }
+                },
+                "networkProfile": {
+                    "networkInterfaces": [
+                        {
+                            "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-nic'))]"
+                        }
+                    ]
+                },
+                "diagnosticsProfile": {
+                    "bootDiagnostics": {
+                        "enabled": true
+                    }
+                },
+                "priority": "Spot",
+                "evictionPolicy": "Deallocate",
+                "billingProfile": {
+                    "maxPrice": -1
+                }
+            }
+        },
+
+        {
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vm/customScriptExtension')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "type": "Microsoft.Compute/virtualMachines/extensions",
+            "apiVersion": "2019-03-01",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vm')]"
+            ],
+            "properties": {
+                "publisher": "Microsoft.Azure.Extensions",
+                "type": "CustomScript",
+                "typeHandlerVersion": "2.1",
+                "autoUpgradeMinorVersion": true,
+                "protectedSettings": {
+                    "commandToExecute": "sudo apt install apache2 -y"
+                }
+            }
+        },
+
+        {
+            "type": "Microsoft.Network/loadBalancers",
+            "apiVersion": "2020-11-01",
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vnet')]"
+            ],
+            "sku": {
+                "name": "Standard",
+                "tier": "Regional"
+            },
+            "properties": {
+                "frontendIPConfigurations": [
+                    {
+                        "name": "LoadBalancerFrontEnd",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vnet'), parameters('privateLinkEnvironment').subnets[1].name)]"
+                            },
+                            "privateIPAddressVersion": "IPv4"
+                        },
+                        "zones": [
+                            "1",
+                            "2",
+                            "3"
+                        ]
+                    }
+                ],
+                "backendAddressPools": [
+                    {
+                        "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb-backend-pool')]"
+                    }
+                ],
+                "loadBalancingRules": [
+                    {
+                        "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb-balancing-rule-80-80')]",
+                        "properties": {
+                            "frontendIPConfiguration": {
+                                "id": "[concat(resourceId('Microsoft.Network/loadBalancers', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb')), '/frontendIPConfigurations/LoadBalancerFrontEnd')]"
+                            },
+                            "frontendPort": 80,
+                            "backendPort": 80,
+                            "enableFloatingIP": false,
+                            "idleTimeoutInMinutes": 4,
+                            "protocol": "Tcp",
+                            "enableTcpReset": false,
+                            "loadDistribution": "Default",
+                            "disableOutboundSnat": false,
+                            "backendAddressPool": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/backendAddressPools', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb'),concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name,'-lb-backend-pool'))]"
+                            },
+                            "probe": {
+                                "id": "[resourceId('Microsoft.Network/loadBalancers/probes', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb'), 'HTTP')]"
+                            }
+                        }
+                    }
+                ],
+                "probes": [
+                    {
+                        "name": "HTTP",
+                        "properties": {
+                            "protocol": "Http",
+                            "port": 80,
+                            "requestPath": "/",
+                            "intervalInSeconds": 5,
+                            "numberOfProbes": 2
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            "type": "Microsoft.Network/privateLinkServices",
+            "apiVersion": "2020-06-01",
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-private-link-service')]",
+            "location": "[parameters('privateLinkEnvironment').location]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb')]"
+            ],
+            "properties": {
+                "enableProxyProtocol": false,
+                "loadBalancerFrontendIpConfigurations": [
+                    {
+                        "id": "[concat(resourceId('Microsoft.Network/loadBalancers', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-lb')), '/frontendIPConfigurations/LoadBalancerFrontEnd')]"
+                    }
+                ],
+                "ipConfigurations": [
+                    {
+                        "name": "snet-provider-default-1",
+                        "properties": {
+                            "privateIPAllocationMethod": "Dynamic",
+                            "privateIPAddressVersion": "IPv4",
+                            "subnet": {
+                                "id": "[resourceId('Microsoft.Network/virtualNetworks/subnets', concat(parameters('deploymentPrefix'),'-', parameters('privateLinkEnvironment').name, '-vnet'), parameters('privateLinkEnvironment').subnets[1].name)]"
+                            },
+                            "primary": false
+                        }
+                    }
+                ]
+            }
+        }
+    ]
+}

@@ -1,0 +1,158 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "value": "pl0-nsg"
+        },
+        "remoteEnvironment": {
+            "value": {
+                "location": "westeurope",
+                "name": "we-hub",
+                "ipAddressPrefix": "10.0.0.0/24",
+                "subnets": [
+                    {
+                        "name": "NetworkVirtualAppliances",
+                        "properties": {
+                            "addressPrefix": "10.0.0.0/28"
+                        }
+                    },
+                    {
+                        "name": "GatewaySubnet",
+                        "properties": {
+                            "addressPrefix": "10.0.0.240/28"
+                        }
+                    }
+                ],
+                "asnNumber": "65501"
+            }
+        },
+        "mainHubEnvironment": {
+            "value": {
+                "location": "eastus2euap",
+                "name": "euap-hub",
+                "ipAddressPrefix": "10.0.1.0/24",
+                "subnets": [
+                    {
+                        "name": "NetworkVirtualAppliances",
+                        "properties": {
+                            "addressPrefix": "10.0.1.0/28"
+                        }
+                    },
+                    {
+                        "name": "GatewaySubnet",
+                        "properties": {
+                            "addressPrefix": "10.0.1.240/28"
+                        }
+                    }
+                ],
+                "asnNumber": "65502"
+            }
+        },
+        "connectedSpokes": {
+            "value": [
+                {
+                    "location": "eastus2euap",
+                    "name": "spoke1",
+                    "ipAddressPrefix": "10.0.2.0/24",
+                    "subnets": [
+                        {
+                            "name": "Frontend",
+                            "properties": {
+                                "addressPrefix": "10.0.2.0/27"
+                            }
+                        },
+                        {
+                            "name": "Backend",
+                            "properties": {
+                                "addressPrefix": "10.0.2.32/27"
+                            }
+                        }
+                    ]
+                },
+                {
+                    "location": "eastus2euap",
+                    "name": "spoke2",
+                    "ipAddressPrefix": "10.0.3.0/24",
+                    "subnets": [
+                        {
+                            "name": "Frontend",
+                            "properties": {
+                                "addressPrefix": "10.0.3.0/27"
+                            }
+                        },
+                        {
+                            "name": "Backend",
+                            "properties": {
+                                "addressPrefix": "10.0.3.32/27"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "isolatedSpokes": {
+            "value": [
+                {
+                    "location": "westcentralus",
+                    "name": "spoke-isolated",
+                    "ipAddressPrefix": "10.0.4.0/24",
+                    "subnets": [
+                        {
+                            "name": "Frontend",
+                            "properties": {
+                                "addressPrefix": "10.0.4.0/27"
+                            }
+                        },
+                        {
+                            "name": "Backend",
+                            "properties": {
+                                "addressPrefix": "10.0.4.32/27"
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        "privateLinkEnvironment": {
+            "value": {
+                "name": "private-link-server",
+                "location": "westeurope",
+                "ipAddressPrefix": "192.168.0.0/24",
+                "subnets": [
+                    {
+                        "name": "PrivateLinkWorkload",
+                        "properties": {
+                            "addressPrefix": "192.168.0.32/27"
+                        }
+                    },
+                    {
+                        "name": "PrivateLinkNat",
+                        "properties": {
+                            "addressPrefix": "192.168.0.0/27",
+                            "privateLinkServiceNetworkPolicies": "disabled"
+                        }
+                    }
+                ],
+                "adminUsername": "azureAdmin",
+                "publicKey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCWD66lYc90C9LOsiCibThC/R0A\r\nJ7rAt1PbcGgOJGY3svftyEkO72Ris09kttfe8iE2VC9nehU3rAE3gffKMJ0Inq/s\r\nknClHa2kW2W3p9znbun0evfZDxIxF2fhUktB4BTREMoecn8Xz+a3eMYJBmC5z3X8\r\naZp6Xm1Nay+3a5js/NesuuqhXsG1ygUfjwCJ6YlY/Vt23wBTHv3g4hWRot2ZqKtv\r\nMf37MRt6I0hgKDmuY1+MHfOzHThgJDc3WEshCcTWvLIm94dJwPe+MYLQ/GDoL8tg\r\nz1MxItckgO1m57LqekQaBk14Rq7npPAFRL7ZzY2XHRcg1+7DoKu8rugZ2WNju3+e\r\nGhUmhQWOcCEdZb2JXcpRwiCbWs9WffaJIra5CXFff3EQPSB7TleijBtkvwboGs1D\r\n1f5lc5zmaWVXTxkeQmLE/Dn0zt2PdwHwnjxebIlamh7pfzJjZuv9d/k10Q9rpgxZ\r\nqoW96qXbOgoAsejjgfKJDI1w8bjN46PJS/QgCH8= generated-by-azure\r\n"
+            }
+        },
+        "testVirtualMachine": {
+            "value": {
+                "name": "testVm",
+                "adminUsername": "azureAdmin",
+                "publicKey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCWD66lYc90C9LOsiCibThC/R0A\r\nJ7rAt1PbcGgOJGY3svftyEkO72Ris09kttfe8iE2VC9nehU3rAE3gffKMJ0Inq/s\r\nknClHa2kW2W3p9znbun0evfZDxIxF2fhUktB4BTREMoecn8Xz+a3eMYJBmC5z3X8\r\naZp6Xm1Nay+3a5js/NesuuqhXsG1ygUfjwCJ6YlY/Vt23wBTHv3g4hWRot2ZqKtv\r\nMf37MRt6I0hgKDmuY1+MHfOzHThgJDc3WEshCcTWvLIm94dJwPe+MYLQ/GDoL8tg\r\nz1MxItckgO1m57LqekQaBk14Rq7npPAFRL7ZzY2XHRcg1+7DoKu8rugZ2WNju3+e\r\nGhUmhQWOcCEdZb2JXcpRwiCbWs9WffaJIra5CXFff3EQPSB7TleijBtkvwboGs1D\r\n1f5lc5zmaWVXTxkeQmLE/Dn0zt2PdwHwnjxebIlamh7pfzJjZuv9d/k10Q9rpgxZ\r\nqoW96qXbOgoAsejjgfKJDI1w8bjN46PJS/QgCH8= generated-by-azure\r\n",
+                "commandToExecute": "sleep 120; sudo snap install nmap"
+            }
+        },
+        "nvaVirtualMachine": {
+            "value": {
+                "name": "nvaVm",
+                "adminUsername": "azureAdmin",
+                "publicKey": "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCWD66lYc90C9LOsiCibThC/R0A\r\nJ7rAt1PbcGgOJGY3svftyEkO72Ris09kttfe8iE2VC9nehU3rAE3gffKMJ0Inq/s\r\nknClHa2kW2W3p9znbun0evfZDxIxF2fhUktB4BTREMoecn8Xz+a3eMYJBmC5z3X8\r\naZp6Xm1Nay+3a5js/NesuuqhXsG1ygUfjwCJ6YlY/Vt23wBTHv3g4hWRot2ZqKtv\r\nMf37MRt6I0hgKDmuY1+MHfOzHThgJDc3WEshCcTWvLIm94dJwPe+MYLQ/GDoL8tg\r\nz1MxItckgO1m57LqekQaBk14Rq7npPAFRL7ZzY2XHRcg1+7DoKu8rugZ2WNju3+e\r\nGhUmhQWOcCEdZb2JXcpRwiCbWs9WffaJIra5CXFff3EQPSB7TleijBtkvwboGs1D\r\n1f5lc5zmaWVXTxkeQmLE/Dn0zt2PdwHwnjxebIlamh7pfzJjZuv9d/k10Q9rpgxZ\r\nqoW96qXbOgoAsejjgfKJDI1w8bjN46PJS/QgCH8= generated-by-azure\r\n",
+                "commandToExecute": "sleep 120; sudo snap install nmap; sudo sysctl -w net.ipv4.ip_forward=1; sudo iptables -t nat -A POSTROUTING -s 10.0.0.0/24 -j MASQUERADE"
+            }
+        }
+    }
+}

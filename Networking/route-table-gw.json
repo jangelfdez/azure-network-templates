@@ -1,0 +1,61 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "hubEnvironment": {
+            "type": "object",
+            "metadata": {
+                "description": "Environment object with all the properties required to create a new hub"
+            }
+        },
+        "spokes": {
+            "type": "array",
+            "metadata": {
+                "description": "Environment object with all the properties required"
+            }
+        },
+        "nvaIp": {
+            "type": "string",
+            "metadata": {
+                "description": "IP associated to the NVA where traffic needs to be routed"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "apiVersion": "2019-02-01",
+            "type": "Microsoft.Network/routeTables",
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('hubEnvironment').name, '-gateway-route-table')]",
+            "location": "[parameters('hubEnvironment').location]",
+            "properties": {
+                "disableBgpRoutePropagation": false,
+                "copy": [
+                    {
+                        "name": "routes",
+                        "count": "[length(parameters('spokes'))]",
+                        "input": {
+                            "name": "[replace(concat('On-premises-to-nva-for-',parameters('spokes')[copyIndex('routes')].ipAddressPrefix), '/', '-')]",
+                            "properties": {
+                                "addressPrefix": "[parameters('spokes')[copyIndex('routes')].ipAddressPrefix]",
+                                "nextHopType": "VirtualAppliance",
+                                "nextHopIpAddress": "[parameters('nvaIp')]",
+                                "hasBgpOverride": false
+                            }
+                        }
+                    }
+                ]
+            }
+        }
+    ],
+    "outputs": {}
+}
