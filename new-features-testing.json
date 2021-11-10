@@ -63,7 +63,7 @@
             "name": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
             "comments": "Deploy the main resource group where the testing environment would be hosted",
             "type": "Microsoft.Resources/resourceGroups",
-            "apiVersion": "2021-04-01",
+            "apiVersion": "2019-10-01",
             "location": "[parameters('remoteEnvironment').location]",
             "dependsOn": [
             ],
@@ -80,7 +80,6 @@
             "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
             "dependsOn": [
                 "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]"
-
             ],
             "properties": {
                 "mode": "Incremental",
