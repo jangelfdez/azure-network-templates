@@ -1,0 +1,274 @@
+{
+    "$schema": "https://schema.management.azure.com/schemas/2018-05-01/subscriptionDeploymentTemplate.json#",
+    "contentVersion": "1.0.0.0",
+    "parameters": {
+        "deploymentPrefix": {
+            "type": "string",
+            "metadata": {
+                "description": "Prefix to include in every resource created to allow multiple deployments into the same scope"
+            },
+            "defaultValue": "pl-nsg",
+            "maxLength": 10
+        },
+        "remoteEnvironment": {
+            "type": "object",
+            "metadata": {
+                "description": "Details to configure a remote location inside Azure to evaluate access from on-premises using a VPN connection"
+            }
+        },
+
+        "mainHubEnvironment": {
+            "type": "object",
+            "metadata": {
+                "description": "Details to configure the main Hub of our testing environment"
+            }
+        },
+
+        "connectedSpokes": {
+            "type": "array",
+            "metadata": {
+                "description": "Details to configure spokes connected to the hub"
+            }
+        },
+
+        "isolatedSpokes": {
+            "type": "array",
+            "metadata": {
+                "description": "Details to deploy isolated spokes"
+            }
+        },
+        "privateLinkEnvironment": {
+            "type": "object",
+            "metadata": {
+                "description": "Details to deploy a private link environment"
+            }
+        },
+        "testVirtualMachine": {
+            "type": "object",
+            "metadata": {
+                "description": "description"
+            }
+        },
+        "nvaVirtualMachine": {
+            "type": "object",
+            "metadata": {
+                "description": "description"
+            }
+        }
+    },
+    "functions": [],
+    "variables": {},
+    "resources": [
+        {
+            "name": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "comments": "Deploy the main resource group where the testing environment would be hosted",
+            "type": "Microsoft.Resources/resourceGroups",
+            "apiVersion": "2019-10-01",
+            "location": "[parameters('remoteEnvironment').location]",
+            "dependsOn": [
+            ],
+            "tags": {
+            }
+        },
+
+        {
+
+            "name": "[concat(parameters('deploymentPrefix'), '-', parameters('remoteEnvironment').name, '-deployment')]",
+            "comments": "Creates an on-premises environment on Azure with a VPN connection to cloud",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "Networking/hub-network-with-vpn-gw-nva-subnet.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "environment": {
+                        "value": "[parameters('remoteEnvironment')]"
+                    },
+                    "deploymentPrefix": {
+                        "value": "[parameters('deploymentPrefix')]"
+                    }
+                }
+            }
+        },
+        {
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('mainHubEnvironment').name, '-deployment')]",
+            "comments": "Creates a virtual network hub on Azure with a VPN connection to on-premises",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "Networking/hub-network-with-vpn-gw-nva-subnet.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "environment": {
+                        "value": "[parameters('mainHubEnvironment')]"
+                    },
+                    "deploymentPrefix": {
+                        "value": "[parameters('deploymentPrefix')]"
+                    }
+                }
+            }
+        },
+
+        {
+            "name": "[concat(parameters('deploymentPrefix'), '-vpn-connection-deployment')]",
+            "comments": "Establish the VPN connection from on-premises to Azure after the VPN GW are ready",
+            "type": "Microsoft.Resources/deployments",
+            "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "apiVersion": "2020-10-01",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'), '-',parameters('mainHubEnvironment').name, '-deployment')]",
+                "[concat(parameters('deploymentPrefix'),'-', parameters('remoteEnvironment').name, '-deployment')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "Networking/vnet-2-vnet-connection.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "localEnvironment": {
+                        "value": "[parameters('remoteEnvironment')]"
+                    },
+                    "remoteEnvironment": {
+                        "value": "[parameters('mainHubEnvironment')]"
+                    },
+                    "deploymentPrefix": {
+                        "value": "[parameters('deploymentPrefix')]"
+                    }
+                }
+            }
+        },
+        {
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('mainHubEnvironment').name, '-vpn-connection-deployment')]",
+            "comments": "Establish the VPN connection from Azure to on-premises after the VPN GW are ready",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('mainHubEnvironment').name, '-deployment')]",
+                "[concat(parameters('deploymentPrefix'), '-',parameters('remoteEnvironment').name, '-deployment')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "Networking/vnet-2-vnet-connection.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "localEnvironment": {
+                        "value": "[parameters('mainHubEnvironment')]"
+                    },
+                    "remoteEnvironment": {
+                        "value": "[parameters('remoteEnvironment')]"
+                    },
+                    "deploymentPrefix": {
+                        "value": "[parameters('deploymentPrefix')]"
+                    }
+                }
+            }
+        },
+
+        {
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('nvaVirtualMachine').name, '-hub-deployment')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('mainHubEnvironment').name, '-deployment')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "Compute/testing-virtual-machines.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "subnet": {
+                        "value": "[parameters('mainHubEnvironment')]"
+                    },
+                    "vmConfiguration": {
+                        "value": "[parameters('nvaVirtualMachine')]"
+                    },
+                    "deploymentPrefix": {
+                        "value": "[parameters('deploymentPrefix')]"
+                    }
+                }
+            }
+        },
+        {
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('nvaVirtualMachine').name, '-remote-deployment')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('remoteEnvironment').name, '-deployment')]"
+
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "Compute/testing-virtual-machines.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "subnet": {
+                        "value": "[parameters('remoteEnvironment')]"
+                    },
+                    "vmConfiguration": {
+                        "value": "[parameters('nvaVirtualMachine')]"
+                    },
+                    "deploymentPrefix": {
+                        "value": "[parameters('deploymentPrefix')]"
+                    }
+                }
+            }
+        },
+
+        {
+            "name": "[concat(parameters('deploymentPrefix'),'-', parameters('nvaVirtualMachine').name, '-hub-gw-routes-deployment')]",
+            "type": "Microsoft.Resources/deployments",
+            "apiVersion": "2020-10-01",
+            "resourceGroup": "[concat(parameters('deploymentPrefix'),'-testing-enviroment-rg')]",
+            "dependsOn": [
+                "[concat(parameters('deploymentPrefix'),'-', parameters('nvaVirtualMachine').name, '-hub-deployment')]"
+            ],
+            "properties": {
+                "mode": "Incremental",
+                "templateLink": {
+                    "relativePath": "Networking/route-table-gw.json",
+                    "contentVersion": "1.0.0.0"
+                },
+                "parameters": {
+                    "hubEnvironment": {
+                        "value": "[parameters('mainHubEnvironment')]"
+                    },
+                    "spokes": {
+                        "value": "[parameters('connectedSpokes')]"
+                    },
+                    "nvaIp": {
+                        "value": "[reference(concat(parameters('deploymentPrefix'),'-', parameters('nvaVirtualMachine').name, '-hub-deployment')).outputs.vmIp.value]"
+                    },
+                    "deploymentPrefix": {
+                        "value": "[parameters('deploymentPrefix')]"
+                    }
+                }
+            }
+        }
+
+    ],
+    "outputs": {}
+}
